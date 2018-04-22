@@ -103,6 +103,8 @@ void mpmat::realloc(size_t mem_a, size_t mem_b, size_t mem_c){
 	}
 	size_t mem_t = max(max(mem_a,mem_b),mem_c);
 	if (mem_t > len_t){
+		std::cerr << "reallocing temp\n";
+		std::cerr << "to size " << mem_t << "\n";
 		if (len_t != 0) delete [] tmp;
 		tmp = new mpmat_double [mem_t];
 		len_t = mem_t;
@@ -161,6 +163,7 @@ void mpmat::realloc_gpu(size_t mem_a, size_t mem_b, size_t mem_c){
 	}
 	size_t mem_t = max(max(mem_a,mem_b),mem_c);
 	if (mem_t > len_t){
+		std::cerr << "reallocing temp\n";
 		if (len_t != 0) delete [] tmp;
 		tmp = new mpmat_double [mem_t];
 		len_t = mem_t;
@@ -467,17 +470,17 @@ void mpmat::syrk_reduced_gpu(
 	timers["mpmat_syrk_reduced.precalculations"].resume();
 
 	int mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(k)) )/ 2;
-	int mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
+	size_t mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
 
 
 	while ( 2 * mpmat_limb + ceil(log2(k*mpmat_size_a)) > MPMAT_DOUBLE_MANT_IMPLICIT ) {
 		mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(k*mpmat_size_a)) ) / 2;
 		mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
 	}
-	int mpmat_size_c = mpmat_size_a;
+	size_t mpmat_size_c = mpmat_size_a;
 
-	int mem_a = pow(2,ceil(log2(mpmat_size_a))) * m * k;
-	int mem_c = (6*pow(2,ceil(log2(mpmat_size_c))) + 2)* m * m;
+	size_t mem_a = pow(2,ceil(log2(mpmat_size_a))) * m * k;
+	size_t mem_c = (6*pow(2,ceil(log2(mpmat_size_c))) + 2)* m * m;
 
 	realloc(mem_a,0,mem_c);
 
