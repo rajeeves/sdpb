@@ -201,7 +201,7 @@ void matrixSquareIntoBlock(Matrix &A, Matrix &B, int bRow, int bCol) {
   timers["matrixSquareIntoBlockMpmat.complete"].resume();
 
   mpf_set_default_prec(mpf_get_default_prec()+256);
-  Real * block = new Real[A.cols*A.cols];
+  Real * block = new Real[A.cols*A.cols*2];
   
   mpf_set_default_prec(mpf_get_default_prec()-256);
 

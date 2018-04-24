@@ -26,7 +26,7 @@
 // of time
 void mpmat::gradeschool_syrk(const int &a_start, const int &c_start,
                         const int &c_max, CBLAS_ORDER Layout,
-                        CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                        CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                         const double alpha, const double beta) {
   int start = 2 * a_start;
   int diff = c_max - start;

@@ -24,8 +24,8 @@
 void mpmat::gradeschool_gemm(const int &a_start, const int &b_start,
                         const int &c_start, const int &c_max,
                         CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                        CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                        const int &k, const double alpha, const double beta) {
+                        CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                        const size_t &k, const double alpha, const double beta) {
   int start = a_start + b_start;
   int diff = c_max - start;
   if (diff < 2)

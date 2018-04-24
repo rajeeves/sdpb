@@ -14,6 +14,7 @@
 #include <math.h>
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 #include "../Timers.h"
 #ifdef HAVE_OMP_H
 #include <omp.h>
@@ -29,6 +30,20 @@ inline T min(T a, T b) { return a < b ? a : b ; }
 
 template <typename T>
 inline T max (T a,T b) { return a>b ? a : b; }
+
+unsigned long get_avail_mem(){
+	struct sysinfo sinfo;
+	sysinfo(&sinfo);
+	return sinfo.freeram;
+}
+
+// class MemLimitException: public exception
+// {
+//   virtual const char* what() const throw()
+//   {
+//     return "Ran out of memory! Either allocate more memory or reduce the size of your problem attempted.";
+//   }
+// } memlimitex;
 
 mpf_class * randomGMPVector(size_t size, int prec) {
 	gmp_randclass rr(gmp_randinit_default);
@@ -103,8 +118,8 @@ void mpmat::realloc(size_t mem_a, size_t mem_b, size_t mem_c){
 	}
 	size_t mem_t = max(max(mem_a,mem_b),mem_c);
 	if (mem_t > len_t){
-		std::cerr << "reallocing temp\n";
-		std::cerr << "to size " << mem_t << "\n";
+		// std::cerr << "reallocing temp\n";
+		// std::cerr << "to size " << mem_t << "\n";
 		if (len_t != 0) delete [] tmp;
 		tmp = new mpmat_double [mem_t];
 		len_t = mem_t;
@@ -163,7 +178,8 @@ void mpmat::realloc_gpu(size_t mem_a, size_t mem_b, size_t mem_c){
 	}
 	size_t mem_t = max(max(mem_a,mem_b),mem_c);
 	if (mem_t > len_t){
-		std::cerr << "reallocing temp\n";
+		// std::cerr << "reallocing temp\n";
+		// std::cerr << "to size " << mem_t << "\n";
 		if (len_t != 0) delete [] tmp;
 		tmp = new mpmat_double [mem_t];
 		len_t = mem_t;
@@ -476,72 +492,118 @@ void mpmat::syrk_reduced_gpu(
 	while ( 2 * mpmat_limb + ceil(log2(k*mpmat_size_a)) > MPMAT_DOUBLE_MANT_IMPLICIT ) {
 		mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(k*mpmat_size_a)) ) / 2;
 		mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
+
+		// mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(k)) ) / 2;
+		// create a padding of the appropriate amount to account for overflow in the carry-over procedure
+		// mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb ) + ceil(log2(mpmat_size_a)/mpmat_limb);
 	}
 	size_t mpmat_size_c = mpmat_size_a;
 
 	size_t mem_a = pow(2,ceil(log2(mpmat_size_a))) * m * k;
 	size_t mem_c = (6*pow(2,ceil(log2(mpmat_size_c))) + 2)* m * m;
+	size_t mem_t = max(mem_a,mem_c);
+	size_t mem_total = sizeof(mpmat_double)*(mem_a + mem_c + mem_t);
 
-	realloc(mem_a,0,mem_c);
+	// std::cerr << "there are " << get_avail_mem() << " bytes available\n";
 
-	memset(c_double_array, 0, mem_c * sizeof(mpmat_double));
-	double * c2_double_array = new double[mem_c];
-#pragma omp parallel for
-	for (int i = 0; i < gpu_count; ++i){
-		cudaSetDevice(i);
-		cudaMemset(d_c[i], 0, mem_c * sizeof(mpmat_double));
+	size_t ndiv = 1, keff = k;
+
+	while ((mem_t > len_t || mem_c  > len_c || mem_a > len_a ) &&  mem_total > get_avail_mem()*0.75 + 4*len_t + 4*len_c + 4*len_a){
+		// std::cerr << "there isn't enough memory to save " << mem_total << " bytes\n";
+		ndiv *= 2;
+		keff = k / ndiv + (k % ndiv == 0 ? 0 : 1);
+		if (keff <= 1) throw std::length_error("Ran out of memory! Either allocate more memory or reduce the size of your problem attempted.");
+
+		mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(keff)) )/ 2;
+		mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
+
+
+		while ( 2 * mpmat_limb + ceil(log2(keff*mpmat_size_a)) > MPMAT_DOUBLE_MANT_IMPLICIT ) {
+			mpmat_limb = ( MPMAT_DOUBLE_MANT_IMPLICIT - ceil(log2(keff*mpmat_size_a)) ) / 2;
+			mpmat_size_a = ceil_div( abs(a[0].get_mpf_t()->_mp_prec+1) * mp_bits_per_limb, mpmat_limb );
+		}
+		mpmat_size_c = mpmat_size_a;
+
+		mem_a = pow(2,ceil(log2(mpmat_size_a))) * m * keff;
+		mem_c = (6*pow(2,ceil(log2(mpmat_size_c))) + 2)* m * m;
+		mem_t = max(mem_a,mem_c);
+		mem_total = sizeof(mpmat_double)*(mem_a + mem_c + mem_t);
+
 	}
 
-	timers["mpmat_syrk_reduced.precalculations"].stop();
 
-	timers["mpmat_syrk_reduced.GMPtoDouble"].resume();
 
-	int expa;
 
-	mpmatConvertGMPToDoubleVector(
-		a,
-		m * k,
-		a_double_array,
-		mpmat_size_a,
-		mpmat_limb,
-		expa,
-		tmp
-		);
+	realloc(mem_a,0,mem_c);
+	size_t klast = k % keff;
+	// std::cerr << "ndivs = " << ndiv << "; keff = " << keff << "; klast = " << klast << "\n";
 
-	timers["mpmat_syrk_reduced.GMPtoDouble"].stop();
+	for (int div = 0; div < ndiv; ++div){ //loop through all but the last division
 
-	timers["mpmat_syrk_reduced.gpu_copy_forward"].resume();
+		memset(c_double_array, 0, mem_c * sizeof(mpmat_double));
+	#pragma omp parallel for
+		for (int i = 0; i < gpu_count; ++i){
+			cudaSetDevice(i);
+			cudaMemset(d_c[i], 0, mem_c * sizeof(mpmat_double));
+		}
 
-	double alpha = 1.0, beta = 1.0;
+		timers["mpmat_syrk_reduced.precalculations"].stop();
 
-// #pragma omp parallel for 
-// 	for (int i = 0; i < gpu_count; ++i){
-// 		cudaSetDevice(i);
-// 		cudaMemcpyAsync(d_a[i],a_double_array,mem_a*sizeof(mpmat_double),cudaMemcpyHostToDevice);
-// 	}
-	cudaThreadSynchronize();
-	timers["mpmat_syrk_reduced.gpu_copy_forward"].stop();
+		timers["mpmat_syrk_reduced.GMPtoDouble"].resume();
 
-	timers["mpmat_syrk_reduced.multiplication"].resume();
-	karatsuba_symmetric(pow(2,ceil(log2(mpmat_size_c))), Layout, transa,
-		m, k, true);
-	timers["mpmat_syrk_reduced.multiplication"].stop();
+		int expa;
 
-	timers["mpmat_syrk_reduced.DoubletoGMP"].resume();
-	mpmatConvertDoubleToGMPSymm(
-		c,
-		m,
-		c_double_array,
-		mpmat_size_c,
-		mpmat_limb,
-		expa+expa-mpmat_limb,
-		tmp
-		);
-	timers["mpmat_syrk_reduced.DoubletoGMP"].stop();
+		mpmatConvertGMPToDoubleVector(
+			a + keff*m*div,
+			((div < ndiv-1) || (klast == 0) ? m * keff : m * klast),
+			a_double_array,
+			mpmat_size_a,
+			mpmat_limb,
+			expa,
+			tmp
+			);
+
+		timers["mpmat_syrk_reduced.GMPtoDouble"].stop();
+
+		timers["mpmat_syrk_reduced.gpu_copy_forward"].resume();
+
+		double alpha = 1.0, beta = 1.0;
+
+	// #pragma omp parallel for 
+	// 	for (int i = 0; i < gpu_count; ++i){
+	// 		cudaSetDevice(i);
+	// 		cudaMemcpyAsync(d_a[i],a_double_array,mem_a*sizeof(mpmat_double),cudaMemcpyHostToDevice);
+	// 	}
+		cudaThreadSynchronize();
+		timers["mpmat_syrk_reduced.gpu_copy_forward"].stop();
+
+		timers["mpmat_syrk_reduced.multiplication"].resume();
+		karatsuba_symmetric(pow(2,ceil(log2(mpmat_size_c))), Layout, transa,
+			m, ((div < ndiv-1) || (klast == 0) ? keff : klast), true);
+		timers["mpmat_syrk_reduced.multiplication"].stop();
+
+		timers["mpmat_syrk_reduced.DoubletoGMP"].resume();
+		mpmatConvertDoubleToGMPSymm(
+			c + m*m,
+			m,
+			c_double_array,
+			mpmat_size_c,
+			mpmat_limb,
+			expa+expa-mpmat_limb,
+			tmp
+			);
+
+		for (int idx = 0; idx < m*m; ++idx){
+			c[idx] += c[idx+m*m];
+			c[idx+m*m] = 0;
+		}
+		timers["mpmat_syrk_reduced.DoubletoGMP"].stop();
+
+	}
+
 
 
 	timers["mpmat_syrk_reduced.complete"].stop();
-	delete [] c2_double_array;
 }
 
 #endif
@@ -598,6 +660,7 @@ void mpmat::syrk_reduced(
 	size_t mem_a = pow(2,ceil(log2(mpmat_size_a))) * m * k;
 	size_t mem_c = (6*pow(2,ceil(log2(mpmat_size_c))) + 2)* m * m;
 
+	
 	realloc(mem_a,max(mem_a,mem_c),mem_c);
 	double * c2_double_array = new double[mem_c];
 	memset(c_double_array, 0, mem_c * sizeof(mpmat_double));

@@ -35,7 +35,7 @@ void mpmat::clear_gpu(int device) {
 
 void mpmat::karatsuba_generic(const int &c_max, CBLAS_ORDER Layout,
                       CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                      const int &m, const int &n, const int &k, bool gpu) {
+                      const size_t &m, const size_t &n, const size_t &k, bool gpu) {
   if (gpu) {
     gradeschool_cpu(0, 0, 0, c_max, Layout, transa, transb, m, n, k);
   }
@@ -46,14 +46,14 @@ void mpmat::karatsuba_generic(const int &c_max, CBLAS_ORDER Layout,
 #else
 void mpmat::karatsuba_generic(const int &c_max, CBLAS_ORDER Layout,
                       CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                      const int &m, const int &n, const int &k) {
+                      const size_t &m, const size_t &n, const size_t &k) {
   gradeschool_gemm(0, 0, 0, c_max, Layout, transa, transb, m, n, k);
 }
 #endif
 
 #ifdef __SDPB_CUDA__
 void mpmat::karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout,
-                      CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                      CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                       bool gpu) {
   if (gpu) {
     double *b_tmp = b_double_array;
@@ -81,7 +81,7 @@ void mpmat::karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout,
 }
 #else
 void mpmat::karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout,
-                      CBLAS_TRANSPOSE trans, const int &n, const int &k) {
+                      CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k) {
   double *b_tmp = b_double_array;
   b_double_array = a_double_array;
   gradeschool_syrk(0, 0, c_max, Layout, trans, n, k);
@@ -95,13 +95,13 @@ void mpmat::karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout,
 void mpmat::karatsuba_cpu(const int &a_start, const int &b_start,
                           const int &c_start, const int &c_max,
                           CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                          CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                          const int &k, const double alpha, const double beta) {
+                          CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                          const size_t &k, const double alpha, const double beta) {
   int start = a_start + b_start;
   int diff = c_max - start;
-  int len2 =
+  size_t len2 =
       pow(2, ceil(log2(diff)) - 2) + .1; // the "fundamental length" of a and b
-  int clen2 =
+  size_t clen2 =
       len2 -
       1; // the "fundamental length" of c one level below (post squishing)
   size_t mem = (len2 * m * k + len2 * n * k + (6 * len2 + 2) * m * n) *
@@ -146,11 +146,11 @@ void mpmat::karatsuba_cpu(const int &a_start, const int &b_start,
         cudaSetDevice(1);
         if (diff <= 3 * len2) { // if we need half or less of C_2, then just use
                                 // grade school
-          std::cerr << "gs ";
+          //std::cerr << "gs ";
           gradeschool_gpu(0, 0, 0, diff - 2 * len2, Layout, transa, transb, m,
                           n, k, 1); // Maybe?
         } else { // otherwise, we need all quadrants and therefore karatsuba
-          std::cerr << "ka ";
+          //std::cerr << "ka ";
           karatsuba_gpu(0, 0, 0, diff - 2 * len2, Layout, transa, transb, m, n,
                         k, 1); // Maybe?
         }
@@ -309,8 +309,8 @@ void mpmat::karatsuba_cpu(const int &a_start, const int &b_start,
 void mpmat::karatsuba_gpu(const int &a_start, const int &b_start,
                           const int &c_start, const int &c_max,
                           CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                          CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                          const int &k, int device, const double alpha,
+                          CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                          const size_t &k, int device, const double alpha,
                           const double beta) {
   cudaSetDevice(device);
   // std::cerr << "karatsuba " << a_start << "," << b_start << "," << c_start <<
@@ -336,9 +336,9 @@ void mpmat::karatsuba_gpu(const int &a_start, const int &b_start,
         ((Layout == CblasColMajor) != (transa == CblasTrans)) ? m : k, &beta,
         d_c[device] + m * n * c_start, Layout == CblasColMajor ? n : m);
   } else { // if we need all four quadrants, do full karatsuba
-    int len2 = pow(2, ceil(log2(diff)) - 2) +
+    size_t len2 = pow(2, ceil(log2(diff)) - 2) +
                .1; // the "fundamental length" of a and b
-    int clen2 =
+    size_t clen2 =
         len2 -
         1; // the "fundamental length" of c one level below (post squishing)
     double minus = -1.0;
@@ -429,14 +429,14 @@ void mpmat::karatsuba_gpu(const int &a_start, const int &b_start,
 #ifdef __SDPB_CUDA__
 void mpmat::karatsuba_cpu(const int &a_start, const int &c_start,
                           const int &c_max, CBLAS_ORDER Layout,
-                          CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                          CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                           const double alpha, const double beta) {
 
   int start = 2 * a_start;
   int diff = c_max - start;
-  int len2 =
+  size_t len2 =
       pow(2, ceil(log2(diff)) - 2) + .1; // the "fundamental length" of a and b
-  int clen2 =
+  size_t clen2 =
       len2 -
       1; // the "fundamental length" of c one level below (post squishing)
   size_t mem = (len2 * n * k + (6 * len2 + 2) * n * n) * sizeof(mpmat_double);
@@ -478,11 +478,11 @@ void mpmat::karatsuba_cpu(const int &a_start, const int &c_start,
         d_b[1] = d_a[1];
         if (diff <= 3 * len2) { // if we need half or less of C_2, then just use
                                 // grade school
-          std::cerr << "gs ";
+          //std::cerr << "gs ";
           gradeschool_gpu(0, 0, diff - 2 * len2, Layout, trans, n, k,
                           1); // Maybe?
         } else { // otherwise, we need all quadrants and therefore karatsuba
-          std::cerr << "ka ";
+          //std::cerr << "ka ";
           karatsuba_gpu(0, 0, diff - 2 * len2, Layout, trans, n, k, 1); // Maybe?
         }
         d_b[1] = d_tmp_b;
@@ -629,7 +629,7 @@ void mpmat::karatsuba_cpu(const int &a_start, const int &c_start,
 // syrk karatsuba
 void mpmat::karatsuba_gpu(const int &a_start, const int &c_start,
                           const int &c_max, CBLAS_ORDER Layout,
-                          CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                          CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                           int device, const double alpha, const double beta) {
   // std::cerr << "karatsuba on the " << device << " gpu.\n";
   // std::cerr << "skaratsuba " << a_start << "," << c_start << "," << c_max <<
@@ -650,9 +650,9 @@ void mpmat::karatsuba_gpu(const int &a_start, const int &c_start,
     // << "cublas wasn't set up\n"; else std::cerr << stat << "\n";
 
   } else { // if we need all four quadrants, do full karatsuba
-    int len2 = pow(2, ceil(log2(diff)) - 2) +
+    size_t len2 = pow(2, ceil(log2(diff)) - 2) +
                .1; // the "fundamental length" of a and b
-    int clen2 =
+    size_t clen2 =
         len2 -
         1; // the "fundamental length" of c one level below (post squishing)
     double minus = -1.0;
@@ -734,17 +734,18 @@ void mpmat::karatsuba_gpu(const int &a_start, const int &c_start,
 void mpmat::gradeschool_cpu(const int &a_start, const int &b_start,
                             const int &c_start, const int &c_max,
                             CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                            CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                            const int &k, const double alpha,
+                            CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                            const size_t &k, const double alpha,
                             const double beta) {
   int start = a_start + b_start;
   int diff = c_max - start;
-  int len2 = pow(2, ceil(log2(diff)) - 1) + .1;
-  int clen2 =
+  size_t len2 = pow(2, ceil(log2(diff)) - 1) + .1;
+  size_t clen2 =
       len2 -
       1; // the "fundamental length" of c one level below (post squishing)
   size_t mem = (len2 * m * k + len2 * n * k + (6 * len2 + 2) * m * n) *
                sizeof(mpmat_double);
+  // std::cerr << "gradeschool mem = " << mem << "\n";
   // std::cerr << "gradeschool (m,n,k)=(" << m << "," << n << "," << k << ") "
   // << start << " " << c_start << " " << c_max << "\n"; std::cerr << "len2 = "
   // << len2 << "\n";
@@ -765,6 +766,8 @@ void mpmat::gradeschool_cpu(const int &a_start, const int &b_start,
       realloc_gpu_only(len2 * m * k, len2 * n * k, (6 * len2 + 2) * m * n, i);
       clear_gpu(i);
       cudaSetDevice(i);
+      // std::cerr << " k * m * (a_start + (i % 2) * len2) = " <<  k * m * (a_start + (i % 2) * len2) << "\n";
+      // std::cerr << "len2 * m * k * sizeof(mpmat_double) = " << len2 * m * k * sizeof(mpmat_double) << "\n";
       cudaMemcpy(d_a[i], a_double_array + k * m * (a_start + (i % 2) * len2),
                  len2 * m * k * sizeof(mpmat_double), cudaMemcpyHostToDevice);
       cudaMemcpy(d_b[i], b_double_array + k * n * (b_start + (i / 2) * len2),
@@ -874,8 +877,8 @@ void mpmat::gradeschool_cpu(const int &a_start, const int &b_start,
 void mpmat::gradeschool_gpu(const int &a_start, const int &b_start,
                             const int &c_start, const int &c_max,
                             CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                            CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                            const int &k, int device, const double alpha,
+                            CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                            const size_t &k, int device, const double alpha,
                             const double beta) {
   // std::cerr << "gradeschool " << a_start << "," << b_start << "," << c_start
   // << "," << c_max << "," << m << "," << n << "," << k << "\n"; std::cerr <<
@@ -901,8 +904,8 @@ void mpmat::gradeschool_gpu(const int &a_start, const int &b_start,
         d_c[device] + m * n * c_start, Layout == CblasColMajor ? n : m);
   } else { // if we don't need all four, then just do grade school
     // std::cerr << "testing\n";
-    int len2 = pow(2, ceil(log2(diff)) - 1) + .1;
-    int clen2 =
+    size_t len2 = pow(2, ceil(log2(diff)) - 1) + .1;
+    size_t clen2 =
         len2 -
         1; // the "fundamental length" of c one level below (post squishing)
     // C_0 = A_0 * B_0 // karatsuba
@@ -954,16 +957,17 @@ void mpmat::gradeschool_gpu(const int &a_start, const int &b_start,
 // of time
 void mpmat::gradeschool_cpu(const int &a_start, const int &c_start,
                             const int &c_max, CBLAS_ORDER Layout,
-                            CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                            CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                             const double alpha, const double beta) {
   int start = 2 * a_start;
   int diff = c_max - start;
-  int len2 = pow(2, ceil(log2(diff)) - 1) + .1;
-  int clen2 =
+  size_t len2 = pow(2, ceil(log2(diff)) - 1) + .1;
+  size_t clen2 =
       len2 -
       1; // the "fundamental length" of c one level below (post squishing)
   size_t mem =
       (2 * len2 * n * k + (6 * len2 + 2) * n * n) * sizeof(mpmat_double);
+  // std::cerr << "sgradeschool mem = " << mem << "\n"; 
   // std::cerr << "sgradeschool (n,k)=(" << n << "," << k << ") " << start << "
   // " << c_start << " " << c_max << "\n";
   if (diff < 2) { // base case, just multiply
@@ -1099,7 +1103,7 @@ void mpmat::gradeschool_cpu(const int &a_start, const int &c_start,
 // of time
 void mpmat::gradeschool_gpu(const int &a_start, const int &c_start,
                             const int &c_max, CBLAS_ORDER Layout,
-                            CBLAS_TRANSPOSE trans, const int &n, const int &k,
+                            CBLAS_TRANSPOSE trans, const size_t &n, const size_t &k,
                             int device, const double alpha, const double beta) {
   cudaSetDevice(device);
   int start = 2 * a_start;
@@ -1117,8 +1121,8 @@ void mpmat::gradeschool_gpu(const int &a_start, const int &c_start,
   }
   // REVIEW
   else { // if we don't need all four, then just do grade school
-    int len2 = pow(2, ceil(log2(diff)) - 1) + .1;
-    int clen2 =
+    size_t len2 = pow(2, ceil(log2(diff)) - 1) + .1;
+    size_t clen2 =
         len2 -
         1; // the "fundamental length" of c one level below (post squishing)
 
@@ -1162,11 +1166,11 @@ void mpmat::treecondense(double *c, int size, int l) {
   if (l < 9) {
     return;
   } else {
-    int len3 = l / 9; // len3 = 3^(n-2), the length of the leaves two levels
+    size_t len3 = l / 9; // len3 = 3^(n-2), the length of the leaves two levels
                       // down. the len3 at the next level is 3*len3
     int n = log(l) / log(3) +
             .1; // tree level // the epsilon is because floating point sucks
-    int len2 =
+    size_t len2 =
         (1 << (n - 1)) - 1; // the length of leaves two levels down post-squish
                             // the len2 at the next level is 2*len2 + 1
 
@@ -1222,8 +1226,8 @@ void mpmat::treecondense(double *c, int size, int l) {
 void mpmat::karatsuba_bc(const int &a_start, const int &b_start,
                          const int &c_start, const int &c_max,
                          CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                         CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                         const int &k, const double alpha, const double beta) {
+                         CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                         const size_t &k, const double alpha, const double beta) {
 
   int start = a_start + b_start;
   int diff = c_max - start;
@@ -1237,8 +1241,8 @@ void mpmat::karatsuba_bc(const int &a_start, const int &b_start,
         c_double_array + m * n * c_start, Layout == CblasRowMajor ? n : m);
     // std::cout << "\t\tc = " << c_double_array[m*n*c_start] << "\n";
   } else { // if we need all four quadrants, do full karatsuba
-    int len2 = pow(2, ceil(log2(diff)) - 2);
-    int len3 = pow(3, ceil(log2(diff)) - 2);
+    size_t len2 = pow(2, ceil(log2(diff)) - 2);
+    size_t len3 = pow(3, ceil(log2(diff)) - 2);
     // C_0 = A_0 * B_0
     karatsuba_bc(a_start, b_start, c_start, 2 * len2 + start, Layout, transa,
                  transb, m, n, k);
@@ -1264,8 +1268,8 @@ void mpmat::karatsuba_bc(const int &a_start, const int &b_start,
 void mpmat::gradeschool_bc(const int &a_start, const int &b_start,
                            const int &c_start, const int &c_max,
                            CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                           CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                           const int &k, const double alpha,
+                           CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                           const size_t &k, const double alpha,
                            const double beta) {
   int start = a_start + b_start;
   int diff = c_max - start;
@@ -1280,8 +1284,8 @@ void mpmat::gradeschool_bc(const int &a_start, const int &b_start,
         c_double_array + m * n * c_start, Layout == CblasRowMajor ? n : m);
     // std::cout << "\t\tc = " << c_double_array[m*n*c_start] << "\n";
   } else { // if we don't need all four, then just do grade school
-    int len2 = pow(2, ceil(log2(diff)) - 1);
-    int len3 = pow(3, ceil(log2(diff)) - 1);
+    size_t len2 = pow(2, ceil(log2(diff)) - 1);
+    size_t len3 = pow(3, ceil(log2(diff)) - 1);
     // C_0 = A_0 * B_0 // karatsuba
     karatsuba_bc(a_start, b_start, c_start, c_max, Layout, transa, transb, m, n,
                  k);

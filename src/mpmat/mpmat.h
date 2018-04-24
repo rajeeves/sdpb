@@ -14,6 +14,7 @@
 #define MPMAT_MPMAT_H
 
 #include <gmpxx.h>
+#include <sys/sysinfo.h>
 
 #ifdef HAVE_MKL_H
 #include <mkl.h>
@@ -87,39 +88,39 @@ private:
   void karatsuba_gpu(const int &a_start, const int &b_start, const int &c_start,
                      const int &c_max, CBLAS_ORDER Layout,
                      CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                     const int &m, const int &n, const int &k, int device = 0,
+                     const size_t &m, const size_t &n, const size_t &k, int device = 0,
                      const double alpha = 1.0, const double beta = 1.0);
   // Implements a symmetric version of the above
   void karatsuba_gpu(const int &a_start, const int &c_start, const int &c_max,
-                     CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                     const int &k, int device = 0, const double alpha = 1.0,
+                     CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                     const size_t &k, int device = 0, const double alpha = 1.0,
                      const double beta = 1.0);
   void karatsuba_cpu(const int &a_start, const int &b_start, const int &c_start,
                      const int &c_max, CBLAS_ORDER Layout,
                      CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                     const int &m, const int &n, const int &k,
+                     const size_t &m, const size_t &n, const size_t &k,
                      const double alpha = 1.0, const double beta = 1.0);
   // Implements a symmetric version of the above
   void karatsuba_cpu(const int &a_start, const int &c_start, const int &c_max,
-                     CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                     const int &k, const double alpha = 1.0,
+                     CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                     const size_t &k, const double alpha = 1.0,
                      const double beta = 1.0);
 #endif
   void karatsuba_gemm(const int &a_start, const int &b_start, const int &c_start,
                  const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                 CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                 const int &k, const double alpha = 1.0,
+                 CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                 const size_t &k, const double alpha = 1.0,
                  const double beta = 1.0);
   // Implements a symmetric version of the above
   void karatsuba_syrk(const int &a_start, const int &c_start, const int &c_max,
-                 CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                 const int &k, const double alpha = 1.0,
+                 CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                 const size_t &k, const double alpha = 1.0,
                  const double beta = 1.0);
 
   void karatsuba_bc(const int &a_start, const int &b_start, const int &c_start,
                     const int &c_max, CBLAS_ORDER Layout,
                     CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                    const int &m, const int &n, const int &k,
+                    const size_t &m, const size_t &n, const size_t &k,
                     const double alpha = 1.0, const double beta = 1.0);
 
 #ifdef __SDPB_CUDA__
@@ -127,40 +128,40 @@ private:
   void gradeschool_gpu(const int &a_start, const int &b_start,
                        const int &c_start, const int &c_max, CBLAS_ORDER Layout,
                        CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                       const int &m, const int &n, const int &k, int device = 0,
+                       const size_t &m, const size_t &n, const size_t &k, int device = 0,
                        const double alpha = 1.0, const double beta = 1.0);
   // Implements a symmetric version of the above
   void gradeschool_gpu(const int &a_start, const int &c_start, const int &c_max,
-                       CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                       const int &k, int device = 0, const double alpha = 1.0,
+                       CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                       const size_t &k, int device = 0, const double alpha = 1.0,
                        const double beta = 1.0);
   void gradeschool_cpu(const int &a_start, const int &b_start,
                        const int &c_start, const int &c_max, CBLAS_ORDER Layout,
                        CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                       const int &m, const int &n, const int &k,
+                       const size_t &m, const size_t &n, const size_t &k,
                        const double alpha = 1.0, const double beta = 1.0);
   // Implements a symmetric version of the above
   void gradeschool_cpu(const int &a_start, const int &c_start, const int &c_max,
-                       CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                       const int &k, const double alpha = 1.0,
+                       CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                       const size_t &k, const double alpha = 1.0,
                        const double beta = 1.0);
 #endif
   // Implements a truncated recursive multiplication that maximizes Karatsuba
   void gradeschool_gemm(const int &a_start, const int &b_start, const int &c_start,
                    const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                   CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                   const int &k, const double alpha = 1.0,
+                   CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                   const size_t &k, const double alpha = 1.0,
                    const double beta = 1.0);
   // Implements a symmetric version of the above
   void gradeschool_syrk(const int &a_start, const int &c_start, const int &c_max,
-                   CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const int &n,
-                   const int &k, const double alpha = 1.0,
+                   CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans, const size_t &n,
+                   const size_t &k, const double alpha = 1.0,
                    const double beta = 1.0);
 
   void gradeschool_bc(const int &a_start, const int &b_start,
                       const int &c_start, const int &c_max, CBLAS_ORDER Layout,
                       CBLAS_TRANSPOSE transa, CBLAS_TRANSPOSE transb,
-                      const int &m, const int &n, const int &k,
+                      const size_t &m, const size_t &n, const size_t &k,
                       const double alpha = 1.0, const double beta = 1.0);
 
   void clear_gpu(int device);
@@ -411,18 +412,18 @@ public:
 // a cutoff c_max
 #ifdef __SDPB_CUDA__
   void karatsuba_generic(const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                 CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                 const int &k, bool gpu = true);
+                 CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                 const size_t &k, bool gpu = true);
   // symmetric case
   void karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans,
-                 const int &n, const int &k, bool gpu = true);
+                 const size_t &n, const size_t &k, bool gpu = true);
 #else
   void karatsuba_generic(const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE transa,
-                 CBLAS_TRANSPOSE transb, const int &m, const int &n,
-                 const int &k);
+                 CBLAS_TRANSPOSE transb, const size_t &m, const size_t &n,
+                 const size_t &k);
   // symmetric case
   void karatsuba_symmetric(const int &c_max, CBLAS_ORDER Layout, CBLAS_TRANSPOSE trans,
-                 const int &n, const int &k);
+                 const size_t &n, const size_t &k);
 #endif
 
   void treecondense(double *c, int size, int l);

@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
      "Terminate if the complementarity mu = Tr(X Y)/dim(X) exceeds this value.")
 #ifdef __SDPB_CUDA__
 ("gpu",
-     po::bool_switch(&parameters.gpu)->default_value(false),
+     po::bool_switch(&parameters.gpu)->default_value(true),
      "Turns on GPU-based acceleration. Warning: be sure to run this option only on "
      "computers that are configured with CUDA.")
 #endif
